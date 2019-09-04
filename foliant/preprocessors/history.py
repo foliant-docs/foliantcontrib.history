@@ -44,7 +44,7 @@ class Preprocessor(BasePreprocessor):
         self.logger.debug('Running git log command to get changelog file history')
 
         changelog_git_history = run(
-            f'git log --patch --date=iso -- "{changelog_file_path}"',
+            f'git log --reverse --patch --date=iso -- "{changelog_file_path}"',
             cwd=changelog_file_path.parent,
             shell=True,
             check=True,
