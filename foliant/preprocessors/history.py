@@ -19,7 +19,8 @@ class Preprocessor(BasePreprocessor):
         'revision': 'master',
         'changelog': 'changelog.md',
         'title': 'History of Releases',
-        'level': 1,
+        'source_heading_level': 1,
+        'target_top_level': 1,
         'date_format': 'year_first',
         'link': False,
         'limit': 0
@@ -34,8 +35,13 @@ class Preprocessor(BasePreprocessor):
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
 
-    def _get_repo_history(self, repo_url: str, changelog_file_path: Path) -> list:
-        repo_history = []
+    def _get_repo_history(
+        self,
+        repo_url: str,
+        changelog_file_path: Path,
+        source_heading_level: int
+    ) -> list:
+        self.logger.debug('Running git log command to get changelog file history')
 
         changelog_git_history = run(
             f'git log --patch --date=short -- "{changelog_file_path}"',
@@ -46,14 +52,18 @@ class Preprocessor(BasePreprocessor):
             stderr=STDOUT
         )
 
+        repo_history = []
+
         if changelog_git_history.stdout:
+            self.logger.debug('Processing the command output and the changelog file')
+
             changelog_git_history_decoded = changelog_git_history.stdout.decode('utf8', errors='ignore')
 
             with open(changelog_file_path, encoding='utf8') as changelog_file:
                 changelog_file_content = changelog_file.read()
 
             for heading in re.finditer(
-                r'^\#\s+(?P<content>.*)?\s*$',
+                r'^\#{' + rf'{source_heading_level}' + r'}\s+(?P<content>.*)?\s*$',
                 changelog_file_content,
                 flags=re.MULTILINE
             ):
@@ -74,6 +84,9 @@ class Preprocessor(BasePreprocessor):
                     }
                 )
 
+        else:
+            self.logger.debug('The command returned nothing')
+
         return repo_history
 
     def _process_history(self, options: dict) -> str:
@@ -83,22 +96,22 @@ class Preprocessor(BasePreprocessor):
         revision = options.get('revision', self.options['revision'])
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
         title = options.get('title', self.options['title'])
-        first_heading_level = options.get('level', self.options['level'])
+        source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
+        target_top_level = options.get('target_top_level', self.options['target_top_level'])
         date_format = options.get('date_format', self.options['date_format'])
         generate_link = options.get('link', self.options['link'])
         limit = options.get('limit', self.options['limit'])
 
         if not isinstance(repo_urls, list):
-            repo_urls_to_append = []
-            repo_urls_to_append.append(repo_urls)
-            repo_urls = repo_urls_to_append
+            repo_urls = [repo_urls]
 
         self.logger.debug(
             f'Repo URLs: {repo_urls}, ' +
             f'revision: {revision}, ' +
             f'changelog subpath: {changelog_file_subpath}, ' +
             f'title: {title}, ' +
-            f'first heading level: {first_heading_level}, ' +
+            f'source version heading level: {source_heading_level}, ' +
+            f'target top heading level: {target_top_level}, ' +
             f'date format: {date_format}, ' +
             f'link generation: {generate_link}, ' +
             f'limit: {limit}'
@@ -107,6 +120,8 @@ class Preprocessor(BasePreprocessor):
         history = []
 
         for repo_url in repo_urls:
+            self.logger.debug('Calling Includes preprocessor to fetch from Git repo')
+
             repo_path = includes.Preprocessor(
                 self.context,
                 self.logger
@@ -116,8 +131,12 @@ class Preprocessor(BasePreprocessor):
 
             changelog_file_path = (repo_path / changelog_file_subpath).resolve()
 
+            self.logger.debug(f'Full changelog file path: {changelog_file_path}')
+
             if changelog_file_path.exists():
-                repo_history = self._get_repo_history(repo_url, changelog_file_path)
+                self.logger.debug('Getting repo history')
+
+                repo_history = self._get_repo_history(repo_url, changelog_file_path, source_heading_level)
 
                 self.logger.debug(f'Repo history: {repo_history}')
 
@@ -137,12 +156,15 @@ class Preprocessor(BasePreprocessor):
         items_count = 0
 
         for history_item in history:
+            self.logger.debug('Calling Includes preprocessor to get changelog part')
+
             history_markdown_part = includes.Preprocessor(
                 self.context,
                 self.logger
             )._process_include(
                 included_file_path=history_item['changelog'],
                 from_heading=history_item['version'],
+                sethead=2,
                 nohead=True
             )
 
@@ -174,14 +196,18 @@ class Preprocessor(BasePreprocessor):
 
                 break
 
-        if first_heading_level > 1:
+        if target_top_level > 1:
+            self.logger.debug(f'Calling Includes preprocessor to shift heading level to {target_top_level}')
+
             history_markdown = includes.Preprocessor(
                 self.context,
                 self.logger
             )._cut_from_position_to_position(
                 content=history_markdown,
-                sethead=first_heading_level
+                sethead=target_top_level
             )
+
+        self.logger.debug('History generation completed')
 
         return history_markdown
 
