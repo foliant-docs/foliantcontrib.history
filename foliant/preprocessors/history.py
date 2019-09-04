@@ -44,7 +44,7 @@ class Preprocessor(BasePreprocessor):
         self.logger.debug('Running git log command to get changelog file history')
 
         changelog_git_history = run(
-            f'git log --patch --date=short -- "{changelog_file_path}"',
+            f'git log --patch --date=iso -- "{changelog_file_path}"',
             cwd=changelog_file_path.parent,
             shell=True,
             check=True,
@@ -58,6 +58,8 @@ class Preprocessor(BasePreprocessor):
             self.logger.debug('Processing the command output and the changelog file')
 
             changelog_git_history_decoded = changelog_git_history.stdout.decode('utf8', errors='ignore')
+
+            changelog_git_history_decoded = re.sub(r'\r\n', r'\n', changelog_git_history_decoded)
 
             with open(changelog_file_path, encoding='utf8') as changelog_file:
                 changelog_file_content = changelog_file.read()
@@ -75,14 +77,15 @@ class Preprocessor(BasePreprocessor):
                     changelog_git_history_decoded,
                 )
 
-                repo_history.append(
-                    {
-                        'date': commit_summary.group('date'),
-                        'repo': repo_url,
-                        'changelog': changelog_file_path,
-                        'version': heading_content
-                    }
-                )
+                if commit_summary:
+                    repo_history.append(
+                        {
+                            'date': commit_summary.group('date'),
+                            'repo': repo_url,
+                            'changelog': changelog_file_path,
+                            'version': heading_content
+                        }
+                    )
 
         else:
             self.logger.debug('The command returned nothing')
@@ -145,8 +148,6 @@ class Preprocessor(BasePreprocessor):
             else:
                 self.logger.debug('Changelog file not found')
 
-        history.sort(key=itemgetter('version'), reverse=True)
-        history.sort(key=itemgetter('repo'))
         history.sort(key=itemgetter('date'), reverse=True)
 
         self.logger.debug(f'Sorted history: {history}')
@@ -172,9 +173,20 @@ class Preprocessor(BasePreprocessor):
 
             output_date = history_item["date"]
 
-            if date_format == 'day_first':
+            date_pattern = re.compile(
+                r'^(?P<year>\d{4})\-(?P<month>\d{2})\-(?P<day>\d{2}) (?P<time>\S+) (?P<timezone>\S+)$'
+            )
+
+            if date_format == 'year_first':
                 output_date = re.sub(
-                    r'^(?P<year>\d{4})\-(?P<month>\d{2})\-(?P<day>\d{2})$',
+                    date_pattern,
+                    r'\g<year>-\g<month>-\g<day>',
+                    output_date
+                )
+
+            elif date_format == 'day_first':
+                output_date = re.sub(
+                    date_pattern,
                     r'\g<day>.\g<month>.\g<year>',
                     output_date
                 )
@@ -187,7 +199,7 @@ class Preprocessor(BasePreprocessor):
             else:
                 history_markdown += f'{repo_name} '
 
-            history_markdown += f'{history_item["version"]}\n\n{history_markdown_part}\n'
+            history_markdown += f'{history_item["version"]}\n\n{history_markdown_part}\n\n'
 
             items_count += 1
 
