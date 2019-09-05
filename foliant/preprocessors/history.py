@@ -5,6 +5,7 @@ Generates history of releases for some set of Git repositories.
 
 
 import re
+from datetime import datetime
 from pathlib import Path
 from operator import itemgetter
 from subprocess import run, PIPE, STDOUT, CalledProcessError
@@ -23,7 +24,13 @@ class Preprocessor(BasePreprocessor):
         'target_top_level': 1,
         'date_format': 'year_first',
         'link': False,
-        'limit': 0
+        'limit': 0,
+        'rss': False,
+        'rss_file': 'rss.xml',
+        'rss_title': 'History of Releases',
+        'rss_link': '',
+        'rss_description': '',
+        'rss_language': 'en-US'
     }
 
     tags = 'history',
@@ -78,14 +85,32 @@ class Preprocessor(BasePreprocessor):
                 )
 
                 if commit_summary:
+                    self.logger.debug('Calling Includes preprocessor to get changelog part')
+
+                    description = includes.Preprocessor(
+                        self.context,
+                        self.logger
+                    )._process_include(
+                        included_file_path=changelog_file_path,
+                        from_heading=heading_content,
+                        sethead=2,
+                        nohead=True
+                    )
+
+                    repo_name = repo_url.split('/')[-1].rsplit('.', maxsplit=1)[0]
+
                     repo_history.append(
                         {
                             'date': commit_summary.group('date'),
-                            'repo': repo_url,
-                            'changelog': changelog_file_path,
-                            'version': heading_content
+                            'repo_name': repo_name,
+                            'repo_url': repo_url,
+                            'version': heading_content,
+                            'description': description
                         }
                     )
+
+                else:
+                    self.logger.debug('Related commit not found')
 
         else:
             self.logger.debug('The command returned nothing')
@@ -104,6 +129,12 @@ class Preprocessor(BasePreprocessor):
         date_format = options.get('date_format', self.options['date_format'])
         generate_link = options.get('link', self.options['link'])
         limit = options.get('limit', self.options['limit'])
+        rss_enable = options.get('rss', self.options['rss'])
+        rss_file_subpath = options.get('rss_file', self.options['rss_file'])
+        rss_channel_title = options.get('rss_title', self.options['rss_title'])
+        rss_channel_link = options.get('rss_link', self.options['rss_link'])
+        rss_channel_description = options.get('rss_description', self.options['rss_description'])
+        rss_channel_language = options.get('rss_language', self.options['rss_language'])
 
         if not isinstance(repo_urls, list):
             repo_urls = [repo_urls]
@@ -117,7 +148,13 @@ class Preprocessor(BasePreprocessor):
             f'target top heading level: {target_top_level}, ' +
             f'date format: {date_format}, ' +
             f'link generation: {generate_link}, ' +
-            f'limit: {limit}'
+            f'limit: {limit}, ' +
+            f'RSS generation enabled: {rss_enable}, ' +
+            f'RSS file subpath: {rss_file_subpath}, ' +
+            f'RSS channel title: {rss_channel_title}, ' +
+            f'RSS channel link: {rss_channel_link}, ' +
+            f'RSS channel description: {rss_channel_description}, ' +
+            f'RSS channel language: {rss_channel_language}'
         )
 
         history = []
@@ -150,56 +187,77 @@ class Preprocessor(BasePreprocessor):
 
         history.sort(key=itemgetter('date'), reverse=True)
 
-        self.logger.debug(f'Sorted history: {history}')
+        self.logger.debug(f'Final history: {history}')
 
+        self.logger.debug('Generating history Markdown content')
+
+        history_markdown = self._generate_history_markdown(
+            history,
+            title,
+            target_top_level,
+            date_format,
+            generate_link,
+            limit
+        )
+
+        if rss_enable:
+            self.logger.debug('Generating history RSS content')
+
+            self._generate_history_rss(
+                history,
+                rss_file_subpath,
+                rss_channel_title,
+                rss_channel_link,
+                rss_channel_description,
+                rss_channel_language
+            )
+
+        self.logger.debug('History generation completed')
+
+        return history_markdown
+
+    def _generate_history_markdown (
+        self,
+        history: list,
+        title: str,
+        target_top_level: int,
+        date_format: str,
+        generate_link: bool,
+        limit: int
+    ) -> str:
         history_markdown = f'# {title}\n\n'
-
         items_count = 0
 
         for history_item in history:
-            self.logger.debug('Calling Includes preprocessor to get changelog part')
-
-            history_markdown_part = includes.Preprocessor(
-                self.context,
-                self.logger
-            )._process_include(
-                included_file_path=history_item['changelog'],
-                from_heading=history_item['version'],
-                sethead=2,
-                nohead=True
-            )
-
-            repo_name = history_item['repo'].split('/')[-1].rsplit('.', maxsplit=1)[0]
-
-            output_date = history_item["date"]
+            markdown_date = history_item['date']
 
             date_pattern = re.compile(
                 r'^(?P<year>\d{4})\-(?P<month>\d{2})\-(?P<day>\d{2}) (?P<time>\S+) (?P<timezone>\S+)$'
             )
 
             if date_format == 'year_first':
-                output_date = re.sub(
+                markdown_date = re.sub(
                     date_pattern,
                     r'\g<year>-\g<month>-\g<day>',
-                    output_date
+                    markdown_date
                 )
 
             elif date_format == 'day_first':
-                output_date = re.sub(
+                markdown_date = re.sub(
                     date_pattern,
                     r'\g<day>.\g<month>.\g<year>',
-                    output_date
+                    markdown_date
                 )
 
-            history_markdown += f'## [{output_date}] '
+            history_markdown += f'## [{markdown_date}] '
 
             if generate_link:
-                history_markdown += f'[{repo_name}]({history_item["repo"]}) '
+                history_markdown += f'[{history_item["repo_name"]}]({history_item["repo_url"]}) '
 
             else:
-                history_markdown += f'{repo_name} '
+                history_markdown += f'{history_item["repo_name"]} '
 
-            history_markdown += f'{history_item["version"]}\n\n{history_markdown_part}\n\n'
+            history_markdown += f'{history_item["version"]}\n\n{history_item["description"]}\n\n'
 
             items_count += 1
 
@@ -219,9 +277,50 @@ class Preprocessor(BasePreprocessor):
                 sethead=target_top_level
             )
 
-        self.logger.debug('History generation completed')
-
         return history_markdown
+
+    def _generate_history_rss(
+        self,
+        history: list,
+        rss_file_subpath: str,
+        rss_channel_title: str,
+        rss_channel_link: str,
+        rss_channel_description: str,
+        rss_channel_language: str
+    ) -> None:
+        history_rss = f'''<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>{rss_channel_title}</title>
+        <link>{rss_channel_link}</link>
+        <atom:link href="{rss_channel_link}{rss_file_subpath}" rel="self" type="application/rss+xml" />
+        <description>{rss_channel_description}</description>
+        <language>{rss_channel_language}</language>
+'''
+
+        for history_item in history:
+            rss_item_pub_date = datetime.strftime(
+                datetime.strptime(history_item['date'], '%Y-%m-%d %H:%M:%S %z'),
+                '%a, %d %b %Y %H:%M:%S %z'
+            )
+
+            rss_item_guid = (f'{history_item["repo_url"]}#{history_item["date"]}').replace(' ', '_')
+
+            history_rss += f'''        <item>
+            <title>{history_item["repo_name"]} {history_item["version"]}</title>
+            <link>{history_item["repo_url"]}</link>
+            <guid>{rss_item_guid}</guid>
+            <pubDate>{rss_item_pub_date}</pubDate>
+            <description><![CDATA[{history_item["description"]}]]></description>
+        </item>
+'''
+
+        history_rss += '    </channel>\n</rss>\n'
+
+        with open(self.working_dir / rss_file_subpath, 'w', encoding='utf8') as rss_file:
+           rss_file.write(history_rss)
+
+        return None
 
     def process_history(self, content: str) -> str:
         def _sub(history_statement) -> str:
