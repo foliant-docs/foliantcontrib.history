@@ -21,9 +21,8 @@ class Preprocessor(BasePreprocessor):
         'repos': [],
         'revision': 'master',
         'changelog': 'changelog.md',
-        'title': 'History of Releases',
         'source_heading_level': 1,
-        'target_top_level': 1,
+        'target_heading_level': 1,
         'date_format': 'year_first',
         'link': False,
         'limit': 0,
@@ -95,7 +94,7 @@ class Preprocessor(BasePreprocessor):
                     )._process_include(
                         included_file_path=changelog_file_path,
                         from_heading=heading_content,
-                        sethead=2,
+                        sethead=1,
                         nohead=True
                     )
 
@@ -122,13 +121,12 @@ class Preprocessor(BasePreprocessor):
     def _generate_history_markdown (
         self,
         history: list,
-        title: str,
-        target_top_level: int,
+        target_heading_level: int,
         date_format: str,
         generate_link: bool,
         limit: int
     ) -> str:
-        history_markdown = f'# {title}\n\n'
+        history_markdown = ''
         items_count = 0
 
         for history_item in history:
@@ -152,7 +150,7 @@ class Preprocessor(BasePreprocessor):
                     markdown_date
                 )
 
-            history_markdown += f'## [{markdown_date}] '
+            history_markdown += f'# [{markdown_date}] '
 
             if generate_link:
                 history_markdown += f'[{history_item["repo_name"]}]({history_item["repo_url"]}) '
@@ -169,16 +167,15 @@ class Preprocessor(BasePreprocessor):
 
                 break
 
-        if target_top_level > 1:
-            self.logger.debug(f'Calling Includes preprocessor to shift heading level to {target_top_level}')
+        self.logger.debug(f'Calling Includes preprocessor to shift heading level to {target_heading_level}')
 
-            history_markdown = includes.Preprocessor(
-                self.context,
-                self.logger
-            )._cut_from_position_to_position(
-                content=history_markdown,
-                sethead=target_top_level
-            )
+        history_markdown = includes.Preprocessor(
+            self.context,
+            self.logger
+        )._cut_from_position_to_position(
+            content=history_markdown,
+            sethead=target_heading_level
+        )
 
         return history_markdown
 
@@ -258,9 +255,8 @@ class Preprocessor(BasePreprocessor):
         repo_urls = options.get('repos', self.options['repos'])
         revision = options.get('revision', self.options['revision'])
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
-        title = options.get('title', self.options['title'])
         source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
-        target_top_level = options.get('target_top_level', self.options['target_top_level'])
+        target_heading_level = options.get('target_heading_level', self.options['target_heading_level'])
         date_format = options.get('date_format', self.options['date_format'])
         generate_link = options.get('link', self.options['link'])
         limit = options.get('limit', self.options['limit'])
@@ -278,9 +274,8 @@ class Preprocessor(BasePreprocessor):
             f'Repo URLs: {repo_urls}, ' +
             f'revision: {revision}, ' +
             f'changelog subpath: {changelog_file_subpath}, ' +
-            f'title: {title}, ' +
-            f'source version heading level: {source_heading_level}, ' +
-            f'target top heading level: {target_top_level}, ' +
+            f'source heading level: {source_heading_level}, ' +
+            f'target heading level: {target_heading_level}, ' +
             f'date format: {date_format}, ' +
             f'link generation: {generate_link}, ' +
             f'limit: {limit}, ' +
@@ -328,8 +323,7 @@ class Preprocessor(BasePreprocessor):
 
         history_markdown = self._generate_history_markdown(
             history,
-            title,
-            target_top_level,
+            target_heading_level,
             date_format,
             generate_link,
             limit
