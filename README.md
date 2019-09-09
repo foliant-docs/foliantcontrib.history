@@ -24,9 +24,8 @@ The preprocessor has a number of options with the following default values:
     repos: []
     revision: master
     changelog: changelog.md
-    title: History of Releases
     source_heading_level: 1
-    target_top_level: 1
+    target_heading_level: 1
     date_format: year_first
     link: false
     limit: 0
@@ -55,14 +54,11 @@ The preprocessor has a number of options with the following default values:
 `changelog`
 :   Path to changelog file. Changelogs must be located at the same paths in all listed repositories.
 
-`title`
-:   Content of the top-level heading of the target Markdown content of generated history.
-
 `source_heading_level`
 :   Level of headings that precede descriptions of releases in the source Markdown content. It must be the same for all listed repositories.
 
-`target_top_level`
-:   Level of the heading that contains the `title` value in the target Markdown content of generated history.
+`target_heading_level`
+:   Level of headings that precede descriptions of releases in the target Markdown content of generated history.
 
 `date_format`
 :   Output date format to use in the target Markdown content. If the default value `year_first` is used, the date “September 4, 2019” will be represented as `2019-09-04`. If the `day_first` value is used, this date will be represented as `04.09.2019`.
@@ -74,7 +70,7 @@ The preprocessor has a number of options with the following default values:
 :   Maximum number of items to include into the target Markdown content; `0` means no limit.
 
 `rss`
-:   Flag that tells the preprocessor to export the history into RSS feed. Note that the parameters `title`, `target_top_level`, `date_format`, `link`, and `limit` are applied to Markdown content only, not to RSS feed content.
+:   Flag that tells the preprocessor to export the history into RSS feed. Note that the parameters `target_heading_level`, `date_format`, `link`, and `limit` are applied to Markdown content only, not to RSS feed content.
 
 `rss_file`
 :   Subpath to the file with RSS feed. It’s relative to the temporary working directory during building, to the directory of built project after building, and to the `rss_link` value in URLs.
