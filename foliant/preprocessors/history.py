@@ -78,10 +78,13 @@ class Preprocessor(BasePreprocessor):
                 flags=re.MULTILINE
             ):
                 heading_full = heading.group(0)
+
+                self.logger.debug(f'Heading found: {heading_full}')
+
                 heading_content = heading.group('content')
 
                 commit_summary = re.search(
-                    r'\nDate: +(?P<date>.+)\n' + r'((?!Date: ).*\n|\n)+' + rf'\+{heading_full}',
+                    r'\nDate: +(?P<date>.+)\n' + r'((?!Date: ).*\n|\n)+' + rf'\+{re.escape(heading_full)}',
                     changelog_git_history_decoded,
                 )
 

@@ -1,3 +1,7 @@
+# 1.0.3
+
+-   Escape regex metacharacters in headings.
+
 # 1.0.2
 
 -   Do not generate common top-level heading of target Markdown content.
