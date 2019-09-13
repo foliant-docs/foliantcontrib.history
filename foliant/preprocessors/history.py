@@ -20,6 +20,7 @@ class Preprocessor(BasePreprocessor):
     defaults = {
         'repos': [],
         'revision': 'master',
+        'from': 'changelog',
         'changelog': 'changelog.md',
         'source_heading_level': 1,
         'target_heading_level': 1,
@@ -44,12 +45,15 @@ class Preprocessor(BasePreprocessor):
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
 
-    def _get_repo_history(
+    def _get_repo_history_from_changelog(
         self,
         repo_url: str,
+        repo_name: str,
         changelog_file_path: Path,
         source_heading_level: int
     ) -> list:
+        repo_history = []
+
         self.logger.debug('Running git log command to get changelog file history')
 
         changelog_git_history = run(
@@ -60,8 +64,6 @@ class Preprocessor(BasePreprocessor):
             stdout=PIPE,
             stderr=STDOUT
         )
-
-        repo_history = []
 
         if changelog_git_history.stdout:
             self.logger.debug('Processing the command output and the changelog file')
@@ -85,8 +87,10 @@ class Preprocessor(BasePreprocessor):
                 heading_content = heading.group('content')
 
                 commit_summary = re.search(
-                    r'\nDate: +(?P<date>.+)\n' + r'((?!Date: ).*\n|\n)+' + rf'\+{re.escape(heading_full)}',
-                    changelog_git_history_decoded,
+                    r'\nDate: +(?P<date>.+)\n' +
+                    r'((?!Date: ).*\n|\n)+' +
+                    rf'\+{re.escape(heading_full)}',
+                    changelog_git_history_decoded
                 )
 
                 if commit_summary:
@@ -101,8 +105,6 @@ class Preprocessor(BasePreprocessor):
                         sethead=1,
                         nohead=True
                     )
-
-                    repo_name = repo_url.split('/')[-1].rsplit('.', maxsplit=1)[0]
 
                     repo_history.append(
                         {
@@ -122,7 +124,103 @@ class Preprocessor(BasePreprocessor):
 
         return repo_history
 
-    def _generate_history_markdown (
+    def _get_repo_history_from_tags(
+        self,
+        repo_url: str,
+        repo_name: str,
+        repo_path: Path
+    ) -> list:
+        repo_history = []
+
+        self.logger.debug('Running git tag command to get tags list')
+
+        git_tags = run(
+            'git tag',
+            cwd=repo_path,
+            shell=True,
+            check=True,
+            stdout=PIPE,
+            stderr=STDOUT
+        )
+
+        if git_tags.stdout:
+            self.logger.debug('Processing the command output')
+
+            tags = git_tags.stdout.decode('utf8', errors='ignore').replace('\r\n', '\n').split('\n')
+
+            for tag in tags:
+                if tag:
+                    self.logger.debug(f'Running git show command to get description of tag: {tag}')
+
+                    git_show_tag = run(
+                        f'git show {tag} --date=iso',
+                        cwd=repo_path,
+                        shell=True,
+                        check=True,
+                        stdout=PIPE,
+                        stderr=STDOUT
+                    )
+
+                    if git_show_tag.stdout:
+                        self.logger.debug('Processing the command output')
+
+                        tag_data = git_show_tag.stdout.decode('utf8', errors='ignore').replace('\r\n', '\n')
+
+                        annotated_tag_summary = re.search(
+                            rf'^tag {re.escape(tag)}\n' +
+                            r'Tagger: .+\n' +
+                            r'Date: +(?P<date>.+)\n\n' +
+                            r'(?P<annotation>((?!commit [0-9a-f]{40}).*\n|\n)+)',
+                            tag_data
+                        )
+
+                        if annotated_tag_summary:
+                            self.logger.debug('The tag is annotated')
+
+                            repo_history.append(
+                                {
+                                    'date': annotated_tag_summary.group('date'),
+                                    'repo_name': repo_name,
+                                    'repo_url': repo_url,
+                                    'version': tag,
+                                    'description': annotated_tag_summary.group('annotation')
+                                }
+                            )
+
+                        else:
+                            tag_commit_summary = re.search(
+                                r'^commit [0-9a-f]{40}\n' +
+                                r'Author: .+\n' +
+                                r'Date: +(?P<date>.+)\n\n' +
+                                r'(?P<message>((?!diff \-\-git a\/).*\n|\n)+)',
+                                tag_data
+                            )
+
+                            if tag_commit_summary:
+                                self.logger.debug('The tag is not annotated, it refers to a commit')
+
+                                repo_history.append(
+                                    {
+                                        'date': tag_commit_summary.group('date'),
+                                        'repo_name': repo_name,
+                                        'repo_url': repo_url,
+                                        'version': tag,
+                                        'description': tag_commit_summary.group('message')
+                                    }
+                                )
+
+                            else:
+                                self.logger.debug('Unable to get tag description')
+
+                    else:
+                        self.logger.debug('The command returned nothing')
+
+        else:
+            self.logger.debug('The command returned nothing')
+
+        return repo_history
+
+    def _generate_history_markdown(
         self,
         history: list,
         target_heading_level: int,
@@ -267,6 +365,7 @@ class Preprocessor(BasePreprocessor):
 
         repo_urls = options.get('repos', self.options['repos'])
         revision = options.get('revision', self.options['revision'])
+        data_source = options.get('from', self.options['from'])
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
         source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
         target_heading_level = options.get('target_heading_level', self.options['target_heading_level'])
@@ -287,6 +386,7 @@ class Preprocessor(BasePreprocessor):
         self.logger.debug(
             f'Repo URLs: {repo_urls}, ' +
             f'revision: {revision}, ' +
+            f'data source: {data_source}, ' +
             f'changelog subpath: {changelog_file_subpath}, ' +
             f'source heading level: {source_heading_level}, ' +
             f'target heading level: {target_heading_level}, ' +
@@ -312,23 +412,39 @@ class Preprocessor(BasePreprocessor):
                 self.logger
             )._sync_repo(repo_url, revision)
 
-            self.logger.debug(f'Repo: {repo_url}, path: {repo_path}')
+            repo_name = repo_url.split('/')[-1].rsplit('.', maxsplit=1)[0]
 
-            changelog_file_path = (repo_path / changelog_file_subpath).resolve()
+            self.logger.debug(f'Repo URL: {repo_url}, name: {repo_name}, path: {repo_path}')
 
-            self.logger.debug(f'Full changelog file path: {changelog_file_path}')
+            self.logger.debug(f'Getting repo history, data source: {data_source}')
 
-            if changelog_file_path.exists():
-                self.logger.debug('Getting repo history')
+            repo_history = None
 
-                repo_history = self._get_repo_history(repo_url, changelog_file_path, source_heading_level)
+            if data_source == 'changelog':
+                changelog_file_path = (repo_path / changelog_file_subpath).resolve()
 
+                self.logger.debug(f'Full changelog file path: {changelog_file_path}')
+
+                if changelog_file_path.exists():
+                    repo_history = self._get_repo_history_from_changelog(
+                        repo_url, repo_name, changelog_file_path, source_heading_level
+                    )
+
+                else:
+                    self.logger.debug('Changelog file not found')
+
+            elif data_source == 'tags':
+                repo_history = self._get_repo_history_from_tags(
+                    repo_url, repo_name, repo_path.resolve()
+                )
+
+            else:
+                self.logger.debug('Unsupported data source')
+
+            if repo_history:
                 self.logger.debug(f'Repo history: {repo_history}')
 
                 history.extend(repo_history)
-
-            else:
-                self.logger.debug('Changelog file not found')
 
         history.sort(key=itemgetter('date'), reverse=True)
 
