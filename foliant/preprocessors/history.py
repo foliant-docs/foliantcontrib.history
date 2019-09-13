@@ -23,15 +23,16 @@ class Preprocessor(BasePreprocessor):
         'changelog': 'changelog.md',
         'source_heading_level': 1,
         'target_heading_level': 1,
+        'target_heading_template': '[%date%] [%repo%](%link%) %version%',
         'date_format': 'year_first',
-        'link': False,
         'limit': 0,
         'rss': False,
         'rss_file': 'rss.xml',
         'rss_title': 'History of Releases',
         'rss_link': '',
         'rss_description': '',
-        'rss_language': 'en-US'
+        'rss_language': 'en-US',
+        'rss_item_title_template': '%repo% %version%'
     }
 
     tags = 'history',
@@ -125,8 +126,8 @@ class Preprocessor(BasePreprocessor):
         self,
         history: list,
         target_heading_level: int,
+        target_heading_template: str,
         date_format: str,
-        generate_link: bool,
         limit: int
     ) -> str:
         history_markdown = ''
@@ -153,15 +154,19 @@ class Preprocessor(BasePreprocessor):
                     markdown_date
                 )
 
-            history_markdown += f'# [{markdown_date}] '
+            markdown_heading = (
+                target_heading_template
+            ).replace(
+                '%date%', markdown_date
+            ).replace(
+                '%repo%', history_item['repo_name']
+            ).replace(
+                '%link%', history_item['repo_url']
+            ).replace(
+                '%version%', history_item['version']
+            )
 
-            if generate_link:
-                history_markdown += f'[{history_item["repo_name"]}]({history_item["repo_url"]}) '
-
-            else:
-                history_markdown += f'{history_item["repo_name"]} '
-
-            history_markdown += f'{history_item["version"]}\n\n{history_item["description"]}\n\n'
+            history_markdown += f'# {markdown_heading}\n\n{history_item["description"]}\n\n'
 
             items_count += 1
 
@@ -189,7 +194,8 @@ class Preprocessor(BasePreprocessor):
         rss_channel_title: str,
         rss_channel_link: str,
         rss_channel_description: str,
-        rss_channel_language: str
+        rss_channel_language: str,
+        rss_item_title_template: str
     ) -> None:
         if rss_channel_link.endswith('/'):
             atom_link_href = f'{rss_channel_link}{rss_file_subpath}'
@@ -223,7 +229,11 @@ class Preprocessor(BasePreprocessor):
             ).hexdigest()
 
             rss_item_title = (
-                f'{history_item["repo_name"]} {history_item["version"]}'
+                rss_item_title_template
+            ).replace(
+                '%repo%', history_item['repo_name']
+            ).replace(
+                '%version%', history_item['version']
             ).replace(
                 '&', '&amp;'
             ).replace(
@@ -260,8 +270,8 @@ class Preprocessor(BasePreprocessor):
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
         source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
         target_heading_level = options.get('target_heading_level', self.options['target_heading_level'])
+        target_heading_template = options.get('target_heading_template', self.options['target_heading_template'])
         date_format = options.get('date_format', self.options['date_format'])
-        generate_link = options.get('link', self.options['link'])
         limit = options.get('limit', self.options['limit'])
         rss_enable = options.get('rss', self.options['rss'])
         rss_file_subpath = options.get('rss_file', self.options['rss_file'])
@@ -269,6 +279,7 @@ class Preprocessor(BasePreprocessor):
         rss_channel_link = options.get('rss_link', self.options['rss_link'])
         rss_channel_description = options.get('rss_description', self.options['rss_description'])
         rss_channel_language = options.get('rss_language', self.options['rss_language'])
+        rss_item_title_template = options.get('rss_item_title_template', self.options['rss_item_title_template'])
 
         if not isinstance(repo_urls, list):
             repo_urls = [repo_urls]
@@ -279,15 +290,16 @@ class Preprocessor(BasePreprocessor):
             f'changelog subpath: {changelog_file_subpath}, ' +
             f'source heading level: {source_heading_level}, ' +
             f'target heading level: {target_heading_level}, ' +
+            f'target heading template: {target_heading_template}, ' +
             f'date format: {date_format}, ' +
-            f'link generation: {generate_link}, ' +
             f'limit: {limit}, ' +
             f'RSS generation enabled: {rss_enable}, ' +
             f'RSS file subpath: {rss_file_subpath}, ' +
             f'RSS channel title: {rss_channel_title}, ' +
             f'RSS channel link: {rss_channel_link}, ' +
             f'RSS channel description: {rss_channel_description}, ' +
-            f'RSS channel language: {rss_channel_language}'
+            f'RSS channel language: {rss_channel_language}, ' +
+            f'RSS item title template: {rss_item_title_template}'
         )
 
         history = []
@@ -327,8 +339,8 @@ class Preprocessor(BasePreprocessor):
         history_markdown = self._generate_history_markdown(
             history,
             target_heading_level,
+            target_heading_template,
             date_format,
-            generate_link,
             limit
         )
 
@@ -341,7 +353,8 @@ class Preprocessor(BasePreprocessor):
                 rss_channel_title,
                 rss_channel_link,
                 rss_channel_description,
-                rss_channel_language
+                rss_channel_language,
+                rss_item_title_template
             )
 
         self.logger.debug('History generation completed')

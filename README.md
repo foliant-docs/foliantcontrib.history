@@ -26,15 +26,16 @@ The preprocessor has a number of options with the following default values:
     changelog: changelog.md
     source_heading_level: 1
     target_heading_level: 1
+    target_heading_template: '[%date%] [%repo%](%link%) %version%'
     date_format: year_first
-    link: false
     limit: 0
     rss: false
     rss_file: rss.xml
-    rss_title: History of Releases
+    rss_title: 'History of Releases'
     rss_link: ''
     rss_description: ''
     rss_language: en-US
+    rss_item_title_template: '%repo% %version%'
 ```
 
 `repos`
@@ -60,17 +61,17 @@ The preprocessor has a number of options with the following default values:
 `target_heading_level`
 :   Level of headings that precede descriptions of releases in the target Markdown content of generated history.
 
+`target_heading_template`
+:   Template for top-level headings in the target Markdown content. You may use any characters, and the variables: `%date%`—date, `%repo%`—repo name, `%link%`—repo URL, `%version%`—content of source changelog heading (usually includes release version).
+
 `date_format`
 :   Output date format to use in the target Markdown content. If the default value `year_first` is used, the date “September 4, 2019” will be represented as `2019-09-04`. If the `day_first` value is used, this date will be represented as `04.09.2019`.
-
-`link`
-:   Flag that tells the preprocessor to add the link to the repository to each heading of history item in the target Markdown content.
 
 `limit`
 :   Maximum number of items to include into the target Markdown content; `0` means no limit.
 
 `rss`
-:   Flag that tells the preprocessor to export the history into RSS feed. Note that the parameters `target_heading_level`, `date_format`, `link`, and `limit` are applied to Markdown content only, not to RSS feed content.
+:   Flag that tells the preprocessor to export the history into RSS feed. Note that the parameters `target_heading_level`, `target_heading_template`, `date_format`, and `limit` are applied to Markdown content only, not to RSS feed content.
 
 `rss_file`
 :   Subpath to the file with RSS feed. It’s relative to the temporary working directory during building, to the directory of built project after building, and to the `rss_link` value in URLs.
@@ -86,6 +87,9 @@ The preprocessor has a number of options with the following default values:
 
 `rss_language`
 :   RSS channel language.
+
+`rss_item_title_template`
+:   Template for titles of RSS feed items. You may use any characters, and the variables: `%repo%`—repo name, `%version%`—content of source changelog heading (usually includes release version).
 
 ## Usage
 
@@ -107,7 +111,6 @@ You may override each config option value with the attribute of the same name. E
 <<history
     repos="https://github.com/foliant-docs/foliantcontrib.mkdocs.git"
     revision="develop"
-    link="true"
     limit="5"
     rss="true"
     rss_file="some_another.xml"
