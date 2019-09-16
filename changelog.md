@@ -1,3 +1,7 @@
+# 1.0.6
+
+-   Fix some regex patterns.
+
 # 1.0.5
 
 -   Allow to generate history based on tags and commits.
