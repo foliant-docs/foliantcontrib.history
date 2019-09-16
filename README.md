@@ -1,6 +1,6 @@
 # History
 
-History is a preprocessor that generates single linear history of releases for multiple Git repositories based on their changelogs. The history may be represented as Markdown, and as RSS feed.
+History is a preprocessor that generates single linear history of releases for multiple Git repositories based on their changelog files, tags, or commits. The history may be represented as Markdown, and as RSS feed.
 
 ## Installation
 
@@ -23,6 +23,7 @@ The preprocessor has a number of options with the following default values:
 - history:
     repos: []
     revision: master
+    from: changelog
     changelog: changelog.md
     source_heading_level: 1
     target_heading_level: 1
@@ -52,6 +53,9 @@ The preprocessor has a number of options with the following default values:
 `revision`
 :   Revision or branch name to use. Branches that are used for stable releases must have the same names in all listed repositories.
 
+`from`
+:   Data source to generate history: `changelog`—changelog file, `tags`—tags, `commits`—all commits. Data sources of the same type will be used for all listed repositories.
+
 `changelog`
 :   Path to changelog file. Changelogs must be located at the same paths in all listed repositories.
 
@@ -62,7 +66,7 @@ The preprocessor has a number of options with the following default values:
 :   Level of headings that precede descriptions of releases in the target Markdown content of generated history.
 
 `target_heading_template`
-:   Template for top-level headings in the target Markdown content. You may use any characters, and the variables: `%date%`—date, `%repo%`—repo name, `%link%`—repo URL, `%version%`—content of source changelog heading (usually includes release version).
+:   Template for top-level headings in the target Markdown content. You may use any characters, and the variables: `%date%`—date, `%repo%`—repo name, `%link%`—repo URL, `%version%`—version data (content of source changelog heading, tag value, or commit hash).
 
 `date_format`
 :   Output date format to use in the target Markdown content. If the default value `year_first` is used, the date “September 4, 2019” will be represented as `2019-09-04`. If the `day_first` value is used, this date will be represented as `04.09.2019`.
@@ -89,7 +93,7 @@ The preprocessor has a number of options with the following default values:
 :   RSS channel language.
 
 `rss_item_title_template`
-:   Template for titles of RSS feed items. You may use any characters, and the variables: `%repo%`—repo name, `%version%`—content of source changelog heading (usually includes release version).
+:   Template for titles of RSS feed items. You may use any characters, and the variables: `%repo%`—repo name, `%version%`—version data.
 
 ## Usage
 

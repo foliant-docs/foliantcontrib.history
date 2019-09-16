@@ -1,3 +1,7 @@
+# 1.0.5
+
+-   Allow to generate history based on tags and commits.
+
 # 1.0.4
 
 -   Add templates for target Markdown headings and RSS items titles.

@@ -190,6 +190,7 @@ class Preprocessor(BasePreprocessor):
                         else:
                             tag_commit_summary = re.search(
                                 r'^commit [0-9a-f]{40}\n' +
+                                r'((?!commit [0-9a-f]{40}).*\n|\n)?' +
                                 r'Author: .+\n' +
                                 r'Date: +(?P<date>.+)\n\n' +
                                 r'(?P<message>((?!diff \-\-git a\/).*\n|\n)+)',
@@ -199,13 +200,20 @@ class Preprocessor(BasePreprocessor):
                             if tag_commit_summary:
                                 self.logger.debug('The tag is not annotated, it refers to a commit')
 
+                                tag_commit_message = re.sub(
+                                    r'^ {4}',
+                                    r'',
+                                    tag_commit_summary.group('message'),
+                                    flags=re.MULTILINE
+                                )
+
                                 repo_history.append(
                                     {
                                         'date': tag_commit_summary.group('date'),
                                         'repo_name': repo_name,
                                         'repo_url': repo_url,
                                         'version': tag,
-                                        'description': tag_commit_summary.group('message')
+                                        'description': tag_commit_message
                                     }
                                 )
 
@@ -214,6 +222,60 @@ class Preprocessor(BasePreprocessor):
 
                     else:
                         self.logger.debug('The command returned nothing')
+
+        else:
+            self.logger.debug('The command returned nothing')
+
+        return repo_history
+
+    def _get_repo_history_from_commits(
+        self,
+        repo_url: str,
+        repo_name: str,
+        repo_path: Path
+    ) -> list:
+        repo_history = []
+
+        self.logger.debug('Running git log command to get log of commits')
+
+        git_log = run(
+            'git log --reverse --date=iso',
+            cwd=repo_path,
+            shell=True,
+            check=True,
+            stdout=PIPE,
+            stderr=STDOUT
+        )
+
+        if git_log.stdout:
+            self.logger.debug('Processing the command output')
+
+            git_log_decoded = git_log.stdout.decode('utf8', errors='ignore').replace('\r\n', '\n')
+
+            for commit_summary in re.finditer(
+                r'commit (?P<version>[0-9a-f]{8})[0-9a-f]{32}\n' +
+                r'((?!commit [0-9a-f]{40}).*\n|\n)?' +
+                r'Author: .+\n' +
+                r'Date: +(?P<date>.+)\n\n' +
+                r'(?P<message>((?!commit [0-9a-f]{40}).*\n|\n)+)',
+                git_log_decoded
+            ):
+                commit_message = re.sub(
+                    r'^ {4}',
+                    r'',
+                    commit_summary.group('message'),
+                    flags=re.MULTILINE
+                )
+
+                repo_history.append(
+                    {
+                        'date': commit_summary.group('date'),
+                        'repo_name': repo_name,
+                        'repo_url': repo_url,
+                        'version': commit_summary.group('version'),
+                        'description': commit_message
+                    }
+                )
 
         else:
             self.logger.debug('The command returned nothing')
@@ -435,6 +497,11 @@ class Preprocessor(BasePreprocessor):
 
             elif data_source == 'tags':
                 repo_history = self._get_repo_history_from_tags(
+                    repo_url, repo_name, repo_path.resolve()
+                )
+
+            elif data_source == 'commits':
+                repo_history = self._get_repo_history_from_commits(
                     repo_url, repo_name, repo_path.resolve()
                 )
 
