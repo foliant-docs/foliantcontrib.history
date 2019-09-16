@@ -190,7 +190,7 @@ class Preprocessor(BasePreprocessor):
                         else:
                             tag_commit_summary = re.search(
                                 r'^commit [0-9a-f]{40}\n' +
-                                r'((?!commit [0-9a-f]{40}).*\n|\n)?' +
+                                r'((?!commit [0-9a-f]{40}).*\n|\n)*' +
                                 r'Author: .+\n' +
                                 r'Date: +(?P<date>.+)\n\n' +
                                 r'(?P<message>((?!diff \-\-git a\/).*\n|\n)+)',
@@ -201,7 +201,7 @@ class Preprocessor(BasePreprocessor):
                                 self.logger.debug('The tag is not annotated, it refers to a commit')
 
                                 tag_commit_message = re.sub(
-                                    r'^ {4}',
+                                    r'^ {4}(?!\#)',
                                     r'',
                                     tag_commit_summary.group('message'),
                                     flags=re.MULTILINE
@@ -254,14 +254,14 @@ class Preprocessor(BasePreprocessor):
 
             for commit_summary in re.finditer(
                 r'commit (?P<version>[0-9a-f]{8})[0-9a-f]{32}\n' +
-                r'((?!commit [0-9a-f]{40}).*\n|\n)?' +
+                r'((?!commit [0-9a-f]{40}).*\n|\n)*' +
                 r'Author: .+\n' +
                 r'Date: +(?P<date>.+)\n\n' +
                 r'(?P<message>((?!commit [0-9a-f]{40}).*\n|\n)+)',
                 git_log_decoded
             ):
                 commit_message = re.sub(
-                    r'^ {4}',
+                    r'^ {4}(?!\#)',
                     r'',
                     commit_summary.group('message'),
                     flags=re.MULTILINE
