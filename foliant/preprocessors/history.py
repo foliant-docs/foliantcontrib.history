@@ -20,6 +20,8 @@ class Preprocessor(BasePreprocessor):
     defaults = {
         'repos': [],
         'revision': 'master',
+        'name_from_readme': False,
+        'readme': 'README.md',
         'from': 'changelog',
         'changelog': 'changelog.md',
         'source_heading_level': 1,
@@ -44,6 +46,28 @@ class Preprocessor(BasePreprocessor):
         self.logger = self.logger.getChild('history')
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
+
+    def _get_repo_name_from_readme(self, readme_file_path: Path) -> str:
+        repo_name_from_readme = None
+
+        with open(readme_file_path, encoding='utf8') as readme_file:
+            readme_file_content = readme_file.read()
+
+        first_heading = re.search(
+            r'^\#{1,6}\s+(?P<content>.*)\s*$',
+            readme_file_content,
+            flags=re.MULTILINE
+        )
+
+        if first_heading:
+            repo_name_from_readme = first_heading.group('content')
+
+            self.logger.debug(f'Repo name as first heading content: {repo_name_from_readme}')
+
+        else:
+            self.logger.debug('Cannot get repo name from README')
+
+        return repo_name_from_readme
 
     def _get_repo_history_from_changelog(
         self,
@@ -76,7 +100,7 @@ class Preprocessor(BasePreprocessor):
                 changelog_file_content = changelog_file.read()
 
             for heading in re.finditer(
-                r'^\#{' + rf'{source_heading_level}' + r'}\s+(?P<content>.*)?\s*$',
+                r'^\#{' + rf'{source_heading_level}' + r'}\s+(?P<content>.*)\s*$',
                 changelog_file_content,
                 flags=re.MULTILINE
             ):
@@ -218,7 +242,7 @@ class Preprocessor(BasePreprocessor):
                                 )
 
                             else:
-                                self.logger.debug('Unable to get tag description')
+                                self.logger.debug('Cannot get tag description')
 
                     else:
                         self.logger.debug('The command returned nothing')
@@ -381,7 +405,7 @@ class Preprocessor(BasePreprocessor):
 
             rss_item_guid = f'{history_item["repo_url"]}#' + md5(
                 (
-                    f'{history_item["repo_name"]} ' +
+                    f'{history_item["repo_url"]} ' +
                     f'{history_item["version"]} ' +
                     f'{history_item["date"]} ' +
                     f'{history_item["description"]}'
@@ -427,6 +451,8 @@ class Preprocessor(BasePreprocessor):
 
         repo_urls = options.get('repos', self.options['repos'])
         revision = options.get('revision', self.options['revision'])
+        name_from_readme_enable = options.get('name_from_readme', self.options['name_from_readme'])
+        readme_file_subpath = options.get('readme', self.options['readme'])
         data_source = options.get('from', self.options['from'])
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
         source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
@@ -448,6 +474,8 @@ class Preprocessor(BasePreprocessor):
         self.logger.debug(
             f'Repo URLs: {repo_urls}, ' +
             f'revision: {revision}, ' +
+            f'get repo name from README: {name_from_readme_enable}, ' +
+            f'README subpath: {readme_file_subpath}, ' +
             f'data source: {data_source}, ' +
             f'changelog subpath: {changelog_file_subpath}, ' +
             f'source heading level: {source_heading_level}, ' +
@@ -474,9 +502,29 @@ class Preprocessor(BasePreprocessor):
                 self.logger
             )._sync_repo(repo_url, revision)
 
-            repo_name = repo_url.split('/')[-1].rsplit('.', maxsplit=1)[0]
+            self.logger.debug(f'Repo URL: {repo_url}, path: {repo_path}')
 
-            self.logger.debug(f'Repo URL: {repo_url}, name: {repo_name}, path: {repo_path}')
+            repo_name = None
+
+            if name_from_readme_enable:
+                self.logger.debug('Trying to get repo name from README')
+
+                readme_file_path = (repo_path / readme_file_subpath).resolve()
+
+                self.logger.debug(f'Full README file path: {readme_file_path}')
+
+                if readme_file_path.exists():
+                    repo_name = self._get_repo_name_from_readme(readme_file_path)
+
+                else:
+                    self.logger.debug('README file not found')
+
+            if not repo_name:
+                self.logger.debug('Getting repo name from repo URL')
+
+                repo_name = repo_url.split('/')[-1].rsplit('.', maxsplit=1)[0]
+
+            self.logger.debug(f'Repo name: {repo_name}')
 
             self.logger.debug(f'Getting repo history, data source: {data_source}')
 

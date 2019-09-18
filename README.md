@@ -23,6 +23,8 @@ The preprocessor has a number of options with the following default values:
 - history:
     repos: []
     revision: master
+    name_from_readme: false
+    readme: README.md
     from: changelog
     changelog: changelog.md
     source_heading_level: 1
@@ -52,6 +54,12 @@ The preprocessor has a number of options with the following default values:
 
 `revision`
 :   Revision or branch name to use. Branches that are used for stable releases must have the same names in all listed repositories.
+
+`name_from_readme`
+:   Flag that tells the preprocessor to try to use the content of the first heading of README file in each listed repository as the repo name. If the flag set to `false`, or an attempt to get the first heading content is unsuccessful, the repo name will be based on the repo URL.
+
+`readme`
+:   Path to README file. README files must be located at the same paths in all listed repositories.
 
 `from`
 :   Data source to generate history: `changelog`—changelog file, `tags`—tags, `commits`—all commits. Data sources of the same type will be used for all listed repositories.

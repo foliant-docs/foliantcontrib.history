@@ -1,3 +1,7 @@
+# 1.0.7
+
+-   Allow to get repo names from README files.
+
 # 1.0.6
 
 -   Fix some regex patterns.
