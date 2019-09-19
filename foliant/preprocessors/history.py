@@ -23,6 +23,7 @@ class Preprocessor(BasePreprocessor):
         'name_from_readme': False,
         'readme': 'README.md',
         'from': 'changelog',
+        'merge_commits': True,
         'changelog': 'changelog.md',
         'source_heading_level': 1,
         'target_heading_level': 1,
@@ -256,14 +257,20 @@ class Preprocessor(BasePreprocessor):
         self,
         repo_url: str,
         repo_name: str,
-        repo_path: Path
+        repo_path: Path,
+        merge_commits_enable: bool
     ) -> list:
         repo_history = []
 
         self.logger.debug('Running git log command to get log of commits')
 
+        command = 'git log --reverse --date=iso'
+
+        if not merge_commits_enable:
+            command += ' --no-merges'
+
         git_log = run(
-            'git log --reverse --date=iso',
+            command,
             cwd=repo_path,
             shell=True,
             check=True,
@@ -454,6 +461,7 @@ class Preprocessor(BasePreprocessor):
         name_from_readme_enable = options.get('name_from_readme', self.options['name_from_readme'])
         readme_file_subpath = options.get('readme', self.options['readme'])
         data_source = options.get('from', self.options['from'])
+        merge_commits_enable = options.get('merge_commits', self.options['merge_commits'])
         changelog_file_subpath = options.get('changelog', self.options['changelog'])
         source_heading_level = options.get('source_heading_level', self.options['source_heading_level'])
         target_heading_level = options.get('target_heading_level', self.options['target_heading_level'])
@@ -477,6 +485,7 @@ class Preprocessor(BasePreprocessor):
             f'get repo name from README: {name_from_readme_enable}, ' +
             f'README subpath: {readme_file_subpath}, ' +
             f'data source: {data_source}, ' +
+            f'merge commits enabled: {merge_commits_enable}, ' +
             f'changelog subpath: {changelog_file_subpath}, ' +
             f'source heading level: {source_heading_level}, ' +
             f'target heading level: {target_heading_level}, ' +
@@ -550,7 +559,7 @@ class Preprocessor(BasePreprocessor):
 
             elif data_source == 'commits':
                 repo_history = self._get_repo_history_from_commits(
-                    repo_url, repo_name, repo_path.resolve()
+                    repo_url, repo_name, repo_path.resolve(), merge_commits_enable
                 )
 
             else:

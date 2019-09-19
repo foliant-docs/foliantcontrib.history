@@ -26,6 +26,7 @@ The preprocessor has a number of options with the following default values:
     name_from_readme: false
     readme: README.md
     from: changelog
+    merge_commits: true
     changelog: changelog.md
     source_heading_level: 1
     target_heading_level: 1
@@ -63,6 +64,9 @@ The preprocessor has a number of options with the following default values:
 
 `from`
 :   Data source to generate history: `changelog`—changelog file, `tags`—tags, `commits`—all commits. Data sources of the same type will be used for all listed repositories.
+
+`merge_commits`
+:   Flag that tells the preprocessor to include merge commits into history when `from: commits` is used.
 
 `changelog`
 :   Path to changelog file. Changelogs must be located at the same paths in all listed repositories.

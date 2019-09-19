@@ -1,3 +1,7 @@
+# 1.0.8
+
+-   Allow to ignore merge commits in `from: commits` mode.
+
 # 1.0.7
 
 -   Allow to get repo names from README files.
