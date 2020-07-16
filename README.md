@@ -1,3 +1,5 @@
+[![](https://img.shields.io/pypi/v/foliantcontrib.history.svg)](https://pypi.org/project/foliantcontrib.history/) [![](https://img.shields.io/github/v/tag/foliant-docs/foliantcontrib.history.svg?label=GitHub)](https://github.com/foliant-docs/foliantcontrib.history)
+
 # History
 
 History is a preprocessor that generates single linear history of releases for multiple Git repositories based on their changelog files, tags, or commits. The history may be represented as Markdown, and as RSS feed.
@@ -109,12 +111,12 @@ The preprocessor has a number of options with the following default values:
 
 ## Usage
 
-To insert some history into Markdown content, use the `<<history></history>` tags:
+To insert some history into Markdown content, use the `<history></history>` tags:
 
 ```markdown
 Some optional content here.
 
-<<history></history>
+<history></history>
 
 More optional content.
 ```
@@ -124,7 +126,7 @@ If no attributes specified, the values of options from the project config will b
 You may override each config option value with the attribute of the same name. Example:
 
 ```
-<<history
+<history
     repos="https://github.com/foliant-docs/foliantcontrib.mkdocs.git"
     revision="develop"
     limit="5"
