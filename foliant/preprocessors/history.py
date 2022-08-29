@@ -5,6 +5,7 @@ Generates history of releases for some set of Git repositories.
 
 
 import re
+import requests
 from datetime import datetime
 from hashlib import md5
 from markdown import markdown
@@ -19,7 +20,7 @@ from foliant.preprocessors import includes
 class Preprocessor(BasePreprocessor):
     defaults = {
         'repos': [],
-        'revision': 'master',
+        'revisions': [],
         'name_from_readme': False,
         'readme': 'README.md',
         'from': 'changelog',
@@ -313,6 +314,23 @@ class Preprocessor(BasePreprocessor):
 
         return repo_history
 
+    def _get_revisions_from_repos(self, repo_urls):
+
+        revisions = []
+
+        for repo_url in repo_urls:
+            api_url = repo_url.replace('github.com/', 'api.github.com/repos/')[:-4]
+            response = requests.get(
+                api_url,
+                headers={'Accept': 'application/vnd.github+json'},
+            )
+
+            default_branch = response.json()['default_branch']
+
+            revisions.append(default_branch)
+
+        return revisions
+
     def _generate_history_markdown(
         self,
         history: list,
@@ -455,9 +473,8 @@ class Preprocessor(BasePreprocessor):
 
     def _process_history(self, options: dict) -> str:
         self.logger.debug(f'History statement found, options: {options}')
-
         repo_urls = options.get('repos', self.options['repos'])
-        revision = options.get('revision', self.options['revision'])
+        revisions = options.get('revisions', self.options['revisions'])
         name_from_readme_enable = options.get('name_from_readme', self.options['name_from_readme'])
         readme_file_subpath = options.get('readme', self.options['readme'])
         data_source = options.get('from', self.options['from'])
@@ -481,7 +498,7 @@ class Preprocessor(BasePreprocessor):
 
         self.logger.debug(
             f'Repo URLs: {repo_urls}, ' +
-            f'revision: {revision}, ' +
+            f'revisions: {revisions}, ' +
             f'get repo name from README: {name_from_readme_enable}, ' +
             f'README subpath: {readme_file_subpath}, ' +
             f'data source: {data_source}, ' +
@@ -509,7 +526,7 @@ class Preprocessor(BasePreprocessor):
             repo_path = includes.Preprocessor(
                 self.context,
                 self.logger
-            )._sync_repo(repo_url, revision)
+            )._sync_repo(repo_url, revisions)
 
             self.logger.debug(f'Repo URL: {repo_url}, path: {repo_path}')
 

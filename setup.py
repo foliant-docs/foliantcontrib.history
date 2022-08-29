@@ -26,7 +26,8 @@ setup(
     install_requires=[
         'foliant>=1.0.10',
         'foliantcontrib.includes>=1.1.6',
-        'Markdown'
+        'Markdown',
+        'requests'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
