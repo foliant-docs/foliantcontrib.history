@@ -24,7 +24,7 @@ The preprocessor has a number of options with the following default values:
 ```yaml
 - history:
     repos: []
-    revision: master
+    revision: ''
     name_from_readme: false
     readme: README.md
     from: changelog
@@ -56,7 +56,7 @@ The preprocessor has a number of options with the following default values:
     ```
 
 `revision`
-:   Revision or branch name to use. Branches that are used for stable releases must have the same names in all listed repositories.
+:   Revision or branch name to use. If not set, the default repository branch will be used. You can specify the name of the branch, but in this case this branch will be used for all repositories.
 
 `name_from_readme`
 :   Flag that tells the preprocessor to try to use the content of the first heading of README file in each listed repository as the repo name. If the flag set to `false`, or an attempt to get the first heading content is unsuccessful, the repo name will be based on the repo URL.
