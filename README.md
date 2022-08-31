@@ -56,7 +56,7 @@ The preprocessor has a number of options with the following default values:
     ```
 
 `revision`
-:   Revision or branch name to use. If `revision` is not specified, the default repository branch will be used. You can specify the revision or branch name, but in this case this revision will be used for all repositories.
+:   Revision or branch name to use. If `revision` is not specified, the default branch of the repository will be used. If you specify a revision or branch name, it will be used for all specified repositories.
 
 `name_from_readme`
 :   Flag that tells the preprocessor to try to use the content of the first heading of README file in each listed repository as the repo name. If the flag set to `false`, or an attempt to get the first heading content is unsuccessful, the repo name will be based on the repo URL.
