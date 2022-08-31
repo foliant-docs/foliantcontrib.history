@@ -1,4 +1,4 @@
-# 1.0.8
+# 1.0.9
 
 -   The `revision` argument has been changed so that the default repository branch is used when generating the history.
 
