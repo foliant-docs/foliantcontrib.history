@@ -19,7 +19,7 @@ from foliant.preprocessors import includes
 class Preprocessor(BasePreprocessor):
     defaults = {
         'repos': [],
-        'revision': 'master',
+        'revision': '',
         'name_from_readme': False,
         'readme': 'README.md',
         'from': 'changelog',
