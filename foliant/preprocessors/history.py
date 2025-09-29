@@ -121,7 +121,7 @@ class Preprocessor(BasePreprocessor):
                 if commit_summary:
                     self.logger.debug('Calling Includes preprocessor to get changelog part')
 
-                    description = includes.Preprocessor(
+                    description, _ = includes.Preprocessor(
                         self.context,
                         self.logger
                     )._process_include(
