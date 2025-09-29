@@ -1,3 +1,7 @@
+# 1.0.10
+
+-   Fix for compatibility with the new version of the includes preprocessor
+
 # 1.0.9
 
 -   The `revision` argument has been changed so that the default repository branch is used when generating the history.

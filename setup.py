@@ -16,7 +16,7 @@ setup(
     description=SHORT_DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    version='1.0.9',
+    version='1.0.10',
     author='Artemy Lomov',
     author_email='artemy@lomov.ru',
     url='https://github.com/foliant-docs/foliantcontrib.history',
@@ -25,7 +25,7 @@ setup(
     platforms='any',
     install_requires=[
         'foliant>=1.0.10',
-        'foliantcontrib.includes>=1.1.6',
+        'foliantcontrib.includes>=1.1.19',
         'Markdown'
     ],
     classifiers=[
